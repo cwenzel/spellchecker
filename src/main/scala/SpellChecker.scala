@@ -5,23 +5,20 @@ import scala.collection.mutable.ListBuffer
 object SpellChecker extends App {
   private case class Config(file: String = "")
   private var frequencyMap : Map[String, Int] = Map()
-  private var numberOfWords : Int = 0
 
   (new scopt.OptionParser[Config]("SpellChecker") {
    opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("File name to spell check")
   }).parse(args, Config()).map({ config =>
-
     val stream : InputStream = getClass.getResourceAsStream("/words.txt")
     val dictionary = scala.io.Source.fromInputStream( stream ).getLines.toList
     setWordFrequency
     readFile(config.file, dictionary)
-
   }).getOrElse(sys.exit(-1))
 
   def readFile(fileName : String, dictionary : List[String]) : Boolean = {
    try {
      for (line <- Source.fromFile(fileName).getLines()) {
-       spellCheckWord(line, dictionary)
+       timeProfile({ spellCheckWord(line, dictionary) })
      }
    }
    catch {
@@ -34,16 +31,20 @@ object SpellChecker extends App {
   def spellCheckWord(word : String, dictionary : List[String]) = {
     dictionary.find((a) => a == word) match {
       case Some(_) => println(word + ": CORRECT")
-      case None => autoCorrectWord(word, dictionary)
-    }
-  }
+      case None =>  {
+        val edits = editsOfWord(word)
+        // it takes too long to calculate moreEditsOfWord() on a super long word
+        val edits2 = if (word.length < 20) moreEditsOfWord(word) else List()
 
-  def autoCorrectWord(word : String, dictionary : List[String]) = {
-    chooseBestEdit(editsOfWord(word)) match {
-      case Some(w) => println("YOU SAID: " + word + ". DID YOU MEAN? " + w)
-      case None => println(word + ": INCORRECT")
+        chooseBestEdit(edits ::: edits2) match {
+          case Some(w) => println("YOU SAID: " + word + ". DID YOU MEAN? " + w)
+          case None => println(word + ": INCORRECT")
+        }
+      }
     }
   }
+  
+  def moreEditsOfWord(word : String) = for(e1 <- editsOfWord(word); e2 <-editsOfWord(e1)) yield e2
 
   def chooseBestEdit(edits : List[String]) : Option[String]= {
     var bestMatch = ("", 0)
@@ -89,9 +90,16 @@ object SpellChecker extends App {
     val lineIterator = scala.io.Source.fromInputStream( stream ).getLines
     for (line <- lineIterator) {
       line.split("(\\s)+").toList.foreach(x => {
-        numberOfWords += 1
         frequencyMap += (x.toLowerCase -> (frequencyMap.getOrElse(x.toLowerCase, 0) + 1))
       })
     }
+  }
+
+  def timeProfile[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) / 1000000000.0  + "s")
+    result
   }
 }
