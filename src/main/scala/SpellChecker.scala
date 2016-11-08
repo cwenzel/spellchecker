@@ -3,21 +3,28 @@ import java.io.InputStream
 import scala.collection.mutable.ListBuffer
 
 object SpellChecker extends App {
-  case class Config(file: String = "")
+  case class Config(file: String = "", debug: Boolean = false)
   
   val frequencyMap = getFrequencyMap
   val dictionary = scala.io.Source.fromInputStream( getClass.getResourceAsStream("/words.txt") ).getLines.toList
-  
+  var debugMode = false
+
   (new scopt.OptionParser[Config]("SpellChecker") {
    opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("File name to spell check")
-  }).parse(args, Config()).map({ config =>
-    readFile(config.file)
+   opt[Boolean]('d', "debug") action((value, c) => c.copy(debug = value)) text("Debug mode. Prints back word name and timing info. Accepts Boolean values.")
+  }).parse(args, Config()).map({ config => {
+      debugMode = config.debug
+      readFile(config.file)
+    }
   }).getOrElse(sys.exit(-1))
 
   def readFile(fileName : String) : Boolean = {
    try {
      for (line <- Source.fromFile(fileName).getLines()) {
-       timeProfile({ spellCheckWord(line) })
+       if (debugMode)
+         timeProfile({ spellCheckWord(line.toLowerCase) })
+       else
+         spellCheckWord(line.toLowerCase)
      }
    }
    catch {
@@ -29,20 +36,33 @@ object SpellChecker extends App {
 
   def spellCheckWord(word : String) = {
     dictionary.find((a) => a == word) match {
-      case Some(_) => println(word + ": CORRECT")
+      case Some(_) => printOutput(word, "CORRECT")
       case None =>  {
-        val edits = editsOfWord(word)
-        // it takes too long to calculate moreEditsOfWord() on a super long word
-        val edits2 = if (word.length < 20) moreEditsOfWord(word) else List()
-
-        chooseBestEdit(edits ::: edits2) match {
-          case Some(w) => println("YOU SAID: " + word + ". DID YOU MEAN? " + w)
-          case None => println(word + ": INCORRECT")
+        makeEditsAndChoose(word) match {
+          case Some(w) => if (debugMode) println(word + ". DID YOU MEAN? " + w) else println(w)
+          case None => printOutput(word, "INCORRECT")
         }
       }
     }
   }
   
+  def printOutput(word : String, result : String) {
+     if (debugMode)
+       println(word + ": " + result)
+     else
+       println(result)
+  }
+
+  def makeEditsAndChoose(word : String) : Option[String] = {
+    val firstEdit = chooseBestEdit(editsOfWord(word))
+    if (firstEdit != None)
+      return firstEdit
+    
+    if (word.length < 20) // 20 is the cutoff where moreEditsOfWord gets too slow
+      return chooseBestEdit(moreEditsOfWord(word))
+    None
+  }
+
   def moreEditsOfWord(word : String) = for(e1 <- editsOfWord(word); e2 <-editsOfWord(e1)) yield e2
 
   def chooseBestEdit(edits : List[String]) : Option[String]= {
@@ -98,6 +118,7 @@ object SpellChecker extends App {
     val result = block
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0) / 1000000000.0  + "s")
+    println(" ")
     result
   }
 }
