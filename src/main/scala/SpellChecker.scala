@@ -54,16 +54,15 @@ object SpellChecker extends App {
   }
 
   def makeEditsAndChoose(word : String) : Option[String] = {
-    val firstEdit = chooseBestEdit(editsOfWord(word))
+    val edits = editsOfWord(word)
+    val firstEdit = chooseBestEdit(edits)
     if (firstEdit != None)
       return firstEdit
     
     if (word.length < 20) // 20 is the cutoff where moreEditsOfWord gets too slow
-      return chooseBestEdit(moreEditsOfWord(word))
+      return chooseBestEdit(editsOfEdits(edits))
     None
   }
-
-  def moreEditsOfWord(word : String) = for(e1 <- editsOfWord(word); e2 <-editsOfWord(e1)) yield e2
 
   def chooseBestEdit(edits : List[String]) : Option[String]= {
     var bestMatch = ("", 0)
@@ -76,6 +75,8 @@ object SpellChecker extends App {
     if (bestMatch._2 > 0) Some(bestMatch._1) else None
   }
 
+  def editsOfEdits(edits : List[String]) = for(e1 <- edits; e2 <-editsOfWord(e1)) yield e2
+  
   //All edits that are one edit away from the word
   def editsOfWord(word : String) : List[String] = {
     var edits : ListBuffer[String] = ListBuffer()
