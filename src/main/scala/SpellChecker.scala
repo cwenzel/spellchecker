@@ -3,22 +3,21 @@ import java.io.InputStream
 import scala.collection.mutable.ListBuffer
 
 object SpellChecker extends App {
-  private case class Config(file: String = "")
-  private var frequencyMap : Map[String, Int] = Map()
-
+  case class Config(file: String = "")
+  
+  val frequencyMap = getFrequencyMap
+  val dictionary = scala.io.Source.fromInputStream( getClass.getResourceAsStream("/words.txt") ).getLines.toList
+  
   (new scopt.OptionParser[Config]("SpellChecker") {
    opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("File name to spell check")
   }).parse(args, Config()).map({ config =>
-    val stream : InputStream = getClass.getResourceAsStream("/words.txt")
-    val dictionary = scala.io.Source.fromInputStream( stream ).getLines.toList
-    setWordFrequency
-    readFile(config.file, dictionary)
+    readFile(config.file)
   }).getOrElse(sys.exit(-1))
 
-  def readFile(fileName : String, dictionary : List[String]) : Boolean = {
+  def readFile(fileName : String) : Boolean = {
    try {
      for (line <- Source.fromFile(fileName).getLines()) {
-       timeProfile({ spellCheckWord(line, dictionary) })
+       timeProfile({ spellCheckWord(line) })
      }
    }
    catch {
@@ -28,7 +27,7 @@ object SpellChecker extends App {
    return true
   }
 
-  def spellCheckWord(word : String, dictionary : List[String]) = {
+  def spellCheckWord(word : String) = {
     dictionary.find((a) => a == word) match {
       case Some(_) => println(word + ": CORRECT")
       case None =>  {
@@ -85,14 +84,13 @@ object SpellChecker extends App {
     edits.toList
   }
 
-  def setWordFrequency = {
-    val stream : InputStream = getClass.getResourceAsStream("/sherlock_holmes.txt")
-    val lineIterator = scala.io.Source.fromInputStream( stream ).getLines
-    for (line <- lineIterator) {
-      line.split("(\\s)+").toList.foreach(x => {
-        frequencyMap += (x.toLowerCase -> (frequencyMap.getOrElse(x.toLowerCase, 0) + 1))
-      })
+  def getFrequencyMap : Map[String, Int] = {
+    val lineIterator = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/sherlock_holmes.txt")).getLines
+    var fMap : Map[String, Int] = Map()
+    for (line <- lineIterator; x <- line.split("(\\s)+").toList) {
+      fMap += (x.toLowerCase -> (fMap.getOrElse(x.toLowerCase, 0) + 1))
     }
+    fMap
   }
 
   def timeProfile[R](block: => R): R = {
