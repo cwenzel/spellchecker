@@ -10,8 +10,8 @@ object SpellChecker extends App {
   var debugMode = false
   
   (new scopt.OptionParser[Config]("SpellChecker") {
-   opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("File name to spell check")
-   opt[Boolean]('d', "debug") action((value, c) => c.copy(debug = value)) text("Debug mode. Prints back word name and timing info. Accepts Boolean values.")
+   opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("Required. File name to spell check")
+   opt[Boolean]('d', "debug") action((value, c) => c.copy(debug = value)) text("Optional. Default is false. Debug mode that prints back word name and timing info. Accepts a boolean value.")
   }).parse(args, Config()).map({ config => {
       debugMode = config.debug
       readFile(config.file)
