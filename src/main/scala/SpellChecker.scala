@@ -8,7 +8,7 @@ object SpellChecker extends App {
   val frequencyMap = getFrequencyMap
   val dictionary = scala.io.Source.fromInputStream( getClass.getResourceAsStream("/words.txt") ).getLines.toList
   var debugMode = false
-
+  
   (new scopt.OptionParser[Config]("SpellChecker") {
    opt[String]('f', "file").required() action((value, c) => c.copy(file = value)) text("File name to spell check")
    opt[Boolean]('d', "debug") action((value, c) => c.copy(debug = value)) text("Debug mode. Prints back word name and timing info. Accepts Boolean values.")
@@ -18,7 +18,7 @@ object SpellChecker extends App {
     }
   }).getOrElse(sys.exit(-1))
 
-  def readFile(fileName : String) : Boolean = {
+  def readFile(fileName : String) {
    try {
      for (line <- Source.fromFile(fileName).getLines()) {
        if (debugMode)
@@ -29,9 +29,7 @@ object SpellChecker extends App {
    }
    catch {
     case ex: Exception => println("Error, unable to read file")
-    return false
    }
-   return true
   }
 
   def spellCheckWord(word : String) = {
@@ -55,54 +53,63 @@ object SpellChecker extends App {
 
   def makeEditsAndChoose(word : String) : Option[String] = {
     val edits = editsOfWord(word)
-    val firstEdit = chooseBestEdit(edits)
+    val firstEdit = chooseBestEdit(edits, frequencyMap)
     if (firstEdit != None)
       return firstEdit
     
     if (word.length < 20) // 20 is the cutoff where moreEditsOfWord gets too slow
-      return chooseBestEdit(editsOfEdits(edits))
+      return chooseBestEdit(editsOfEdits(edits), frequencyMap)
     None
   }
 
-  def chooseBestEdit(edits : List[String]) : Option[String]= {
-    var bestMatch = ("", 0)
-    edits.foreach(candidate => {
-      val occurrences = frequencyMap.getOrElse(candidate, 0)
-      if (occurrences > bestMatch._2)
-        bestMatch = (candidate, occurrences)
+  def chooseBestEdit(edits : List[String], frequencyMap : Map[String, Int]) : Option[String]= {
+    val res = edits.foldLeft("NO_VALUE_FOUND")((a, b) => {
+      if (frequencyMap.getOrElse(a, 0) >= frequencyMap.getOrElse(b, 0)) a else b
     })
-
-    if (bestMatch._2 > 0) Some(bestMatch._1) else None
+    if (res == "NO_VALUE_FOUND") None else Some(res)
   }
 
   def editsOfEdits(edits : List[String]) = for(e1 <- edits; e2 <-editsOfWord(e1)) yield e2
   
   //All edits that are one edit away from the word
   def editsOfWord(word : String) : List[String] = {
+    (deleteEdits(word) ++ insertEdits(word) ++ replaceEdits(word) ++ switchEdits(word)).distinct
+  }
+
+  def deleteEdits(word : String) : List[String] = {
     var edits : ListBuffer[String] = ListBuffer()
-    val letters = "abcdefghijklmnopqrstuvwxyz"
-
-    //deletes
     for (i <- word.indices) { edits += (word.toList.take(i) ++ word.toList.drop(i + 1)).mkString }
+    edits.toList.distinct
+  }
 
-    //additions
-    for (i <- word.indices) { letters.foreach(letter => {
+  def insertEdits(word : String) : List[String] = {
+    var edits : ListBuffer[String] = ListBuffer()
+     for (i <- word.indices) { ('a' to 'z').foreach(letter => {
       edits += (word.toList.take(i) ++ List(letter) ++ word.toList.drop(i)).mkString
     })}
+    //there are still the "post word" inserts to make
+    ('a' to 'z').foreach(letter => { edits += (word + letter) })
+    edits.toList.distinct
+  }
 
-    //replaces
-    for (i <- word.indices) { letters.foreach(letter => {
+  def replaceEdits(word : String) : List[String] = {
+    var edits : ListBuffer[String] = ListBuffer()
+    for (i <- word.indices) { ('a' to 'z').foreach(letter => {
       edits += (word.toList.take(i) ++ List(letter) ++ word.toList.drop(i + 1)).mkString
     })}
+    edits.toList.distinct
+  }
 
-    //switching of neighbor chars
+  def switchEdits(word : String) : List[String] = {
+    var edits : ListBuffer[String] = ListBuffer()
     for (i <- word.indices) {
-      val firstHalf = word.toList.take(i)
-      val secondHalf = word.toList.drop(i)
-      edits += (firstHalf.take(i - 1) ++ List(secondHalf(0)) ++ firstHalf.drop(firstHalf.length - 1) ++ secondHalf.drop(1)).mkString
+      if (i > 0) {
+        val firstHalf = word.toList.take(i)
+        val secondHalf = word.toList.drop(i)
+        edits += (firstHalf.take(i - 1) ++ List(secondHalf(0)) ++ firstHalf.drop(firstHalf.length - 1) ++ secondHalf.drop(1)).mkString
+      }
     }
-
-    edits.toList
+    edits.toList.distinct
   }
 
   def getFrequencyMap : Map[String, Int] = {
