@@ -2,13 +2,13 @@ import org.scalatest._
 
 class SpellCheckerSpec extends FlatSpec {
   "deleteEdits" should "produce all the edits" in {
-    val res = SpellChecker.deleteEdits("abcd")
-    assert(res == List("bcd", "acd", "abd", "abc"))
+    val res = SpellChecker.deleteEdits("abcd").toSet
+    assert(res == Set("bcd", "acd", "abd", "abc"))
   }
 
   "insertEdits" should "produce all the edits" in {
-    val res = SpellChecker.insertEdits("a")
-    assert(res == List("aa", "ba", "ca", "da", "ea",
+    val res = SpellChecker.insertEdits("a").toSet
+    assert(res == Set("aa", "ba", "ca", "da", "ea",
       "fa", "ga", "ha", "ia", "ja", "ka", "la", "ma",
       "na", "oa", "pa", "qa", "ra", "sa", "ta", "ua",
       "va", "wa", "xa", "ya", "za", "ab", "ac", "ad",
@@ -18,8 +18,8 @@ class SpellCheckerSpec extends FlatSpec {
   }
 
   "replaceEdits" should "produce all the edits" in {
-    val res = SpellChecker.replaceEdits("aa")
-    assert(res == List("aa", "ba", "ca", "da", "ea",
+    val res = SpellChecker.replaceEdits("aa").toSet
+    assert(res == Set("aa", "ba", "ca", "da", "ea",
       "fa", "ga", "ha", "ia", "ja", "ka", "la", "ma",
       "na", "oa", "pa", "qa", "ra", "sa", "ta", "ua",
       "va", "wa", "xa", "ya", "za", "ab", "ac", "ad",
@@ -29,8 +29,8 @@ class SpellCheckerSpec extends FlatSpec {
   }
 
   "switchEdits" should "produce all the edits" in {
-    val res = SpellChecker.switchEdits("abcd")
-    assert(res == List("bacd", "acbd", "abdc"))
+    val res = SpellChecker.switchEdits("abcd").toSet
+    assert(res == Set("bacd", "acbd", "abdc"))
   }
 
   "chooseBestEdit" should "choose the best edit" in {

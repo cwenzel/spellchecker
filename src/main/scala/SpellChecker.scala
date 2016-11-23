@@ -43,7 +43,7 @@ object SpellChecker extends App {
       }
     }
   }
-  
+
   def printOutput(word : String, result : String) {
      if (debugMode)
        println(word + ": " + result)
@@ -56,7 +56,7 @@ object SpellChecker extends App {
     val firstEdit = chooseBestEdit(edits, frequencyMap)
     if (firstEdit != None)
       return firstEdit
-    
+
     if (word.length < 20) // 20 is the cutoff where moreEditsOfWord gets too slow
       return chooseBestEdit(editsOfEdits(edits), frequencyMap)
     None
@@ -70,46 +70,39 @@ object SpellChecker extends App {
   }
 
   def editsOfEdits(edits : List[String]) = for(e1 <- edits; e2 <-editsOfWord(e1)) yield e2
-  
+
   //All edits that are one edit away from the word
   def editsOfWord(word : String) : List[String] = {
     (deleteEdits(word) ++ insertEdits(word) ++ replaceEdits(word) ++ switchEdits(word)).distinct
   }
 
-  def deleteEdits(word : String) : List[String] = {
-    var edits : ListBuffer[String] = ListBuffer()
-    for (i <- word.indices) { edits += (word.toList.take(i) ++ word.toList.drop(i + 1)).mkString }
-    edits.toList.distinct
-  }
+  def deleteEdits(word : String) : List[String] = word.indices.map({i => word.take(i) ++ word.drop(i + 1)}).toList
 
   def insertEdits(word : String) : List[String] = {
-    var edits : ListBuffer[String] = ListBuffer()
-     for (i <- word.indices) { ('a' to 'z').foreach(letter => {
-      edits += (word.toList.take(i) ++ List(letter) ++ word.toList.drop(i)).mkString
-    })}
-    //there are still the "post word" inserts to make
-    ('a' to 'z').foreach(letter => { edits += (word + letter) })
-    edits.toList.distinct
+    val preWordEdits = for {
+      i <- word.indices.toList
+      letter <- ('a' to 'z')
+    } yield (word.take(i) ++ List(letter) ++ word.drop(i))
+
+    (preWordEdits ++ ('a' to 'z').map({letter => word ++ List(letter)}))
   }
 
   def replaceEdits(word : String) : List[String] = {
-    var edits : ListBuffer[String] = ListBuffer()
-    for (i <- word.indices) { ('a' to 'z').foreach(letter => {
-      edits += (word.toList.take(i) ++ List(letter) ++ word.toList.drop(i + 1)).mkString
-    })}
-    edits.toList.distinct
+    for {
+      i <- word.indices.toList
+      letter <- ('a' to 'z')
+    } yield (word.take(i) ++ List(letter) ++ word.drop(i + 1))
   }
 
   def switchEdits(word : String) : List[String] = {
-    var edits : ListBuffer[String] = ListBuffer()
-    for (i <- word.indices) {
-      if (i > 0) {
-        val firstHalf = word.toList.take(i)
-        val secondHalf = word.toList.drop(i)
-        edits += (firstHalf.take(i - 1) ++ List(secondHalf(0)) ++ firstHalf.drop(firstHalf.length - 1) ++ secondHalf.drop(1)).mkString
-      }
+    for {
+       i <- word.indices.toList
+       if (i > 0)
+    } yield {
+        val firstHalf = word.take(i)
+        val secondHalf = word.drop(i)
+        firstHalf.take(i - 1) ++ List(secondHalf(0)) ++ firstHalf.drop(firstHalf.length - 1) ++ secondHalf.drop(1)
     }
-    edits.toList.distinct
   }
 
   def getFrequencyMap : Map[String, Int] = {
