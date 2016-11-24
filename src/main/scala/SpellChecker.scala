@@ -53,13 +53,7 @@ object SpellChecker extends App {
 
   def makeEditsAndChoose(word : String) : Option[String] = {
     val edits = editsOfWord(word)
-    val firstEdit = chooseBestEdit(edits, frequencyMap)
-    if (firstEdit != None)
-      return firstEdit
-
-    if (word.length < 20) // 20 is the cutoff where moreEditsOfWord gets too slow
-      return chooseBestEdit(editsOfEdits(edits), frequencyMap)
-    None
+    chooseBestEdit(edits, frequencyMap).orElse(if (word.length < 20) chooseBestEdit(editsOfEdits(edits), frequencyMap) else None)
   }
 
   def chooseBestEdit(edits : List[String], frequencyMap : Map[String, Int]) : Option[String]= {
