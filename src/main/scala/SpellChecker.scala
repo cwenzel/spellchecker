@@ -63,10 +63,12 @@ object SpellChecker extends App {
   }
 
   def chooseBestEdit(edits : List[String], frequencyMap : Map[String, Int]) : Option[String]= {
-    val res = edits.foldLeft("NO_VALUE_FOUND")((a, b) => {
-      if (frequencyMap.getOrElse(a, 0) >= frequencyMap.getOrElse(b, 0)) a else b
+    val noneSeed: Option[String] = None
+    edits.map(Some(_)).foldLeft(noneSeed)((a, b) => {
+      val aFreq = a.map(frequencyMap.getOrElse(_, 0)).getOrElse(0)
+      val bFreq = b.map(frequencyMap.getOrElse(_, 0)).getOrElse(0)
+      if (aFreq >= bFreq) a else b
     })
-    if (res == "NO_VALUE_FOUND") None else Some(res)
   }
 
   def editsOfEdits(edits : List[String]) = for(e1 <- edits; e2 <-editsOfWord(e1)) yield e2
